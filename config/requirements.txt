@@ -1,0 +1,16 @@
+ccxt
+pandas
+numpy
+scikit-learn
+transformers
+torch
+requests
+beautifulsoup4
+tweepy
+praw
+ta-lib
+pandas-ta
+schedule
+APScheduler
+PyYAML
+python-dotenv

@@ -1,0 +1,18 @@
+# Exchange API keys
+binance:
+  api_key: "YOUR_BINANCE_API_KEY"
+  api_secret: "YOUR_BINANCE_API_SECRET"
+kucoin:
+  api_key: "YOUR_KUCOIN_API_KEY"
+  api_secret: "YOUR_KUCOIN_API_SECRET"
+
+# Model paths
+finbert_model: "ProsusAI/finbert"
+lstm_model: "models/crypto_lstm_model.h5"
+
+# Data sources
+news_sources:
+  - "https://cointelegraph.com/rss"
+  - "https://coindesk.com/arc/outboundfeeds/rss/"
+  - "https://decrypt.co/feed"
+reddit_subreddit: "cryptocurrency"
