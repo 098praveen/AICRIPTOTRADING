@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 import os
+import socket
 
 # Add parent directory to path to allow absolute imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -12,6 +13,7 @@ from data.pipeline import DataPipeline
 from api.server import app, setup_api_events
 from strategies.router import StrategyRouter
 from trade_engine.portfolio import VirtualPortfolio
+from trade_engine.risk_manager import RiskManager
 import uvicorn
 
 # Setup logging
@@ -24,7 +26,19 @@ logger = logging.getLogger(__name__)
 # Globals for easy access in handlers
 event_bus = EventBus()
 router = StrategyRouter()
-portfolio = VirtualPortfolio(initial_balance=10000.0, event_bus=event_bus)
+portfolio = VirtualPortfolio(initial_balance=10000.0, event_bus=event_bus, risk_per_trade=0.01)
+risk_manager = RiskManager(portfolio)
+
+def _available_port(preferred_port):
+    for port in range(preferred_port, preferred_port + 20):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+            return port
+    raise RuntimeError(f"No free local port found from {preferred_port} to {preferred_port + 19}.")
 
 async def market_data_handler(event: Event):
     """Handles incoming market data."""
@@ -34,8 +48,15 @@ async def market_data_handler(event: Event):
     logger.info(f"Received Market Data for {symbol}: Last Price = {last_price}")
     
     if last_price is not None:
-        market_data = {"symbol": symbol, "last": last_price}
-        signals = router.route_trades(market_data)
+        market_data = {
+            "symbol": symbol,
+            "last": last_price,
+            "bid": ticker.get("bid"),
+            "ask": ticker.get("ask"),
+            "timestamp": ticker.get("timestamp")
+        }
+        signals = router.route_trades(market_data, portfolio.snapshot())
+        signals = risk_manager.apply_risk_filters(signals)
         for signal in signals:
             logger.info(f"Generated Signal: {signal}")
             event_bus.publish(Event(EventType.SIGNAL_GENERATED, signal))
@@ -55,10 +76,13 @@ async def main():
     market_data_task = asyncio.create_task(data_pipeline.start(symbols_to_trade))
     
     # Set up API events
-    setup_api_events(event_bus)
+    setup_api_events(event_bus, portfolio)
     
     # Start UI / API server
-    config = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="info")
+    port = _available_port(int(os.getenv("PORT", "8000")))
+    if port != 8000:
+        logger.info("Port 8000 is busy; using http://127.0.0.1:%s instead.", port)
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="info")
     server = uvicorn.Server(config)
     server_task = asyncio.create_task(server.serve())
     
