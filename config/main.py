@@ -1,39 +1,78 @@
-"""
-Main Entrypoint for AI Crypto Trading System
-"""
+import asyncio
+import logging
+import sys
+import os
 
+# Add parent directory to path to allow absolute imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from core.events import EventBus, EventType, Event
+from config.settings import settings
 from data.pipeline import DataPipeline
-from models.sentiment import SentimentModel
-from models.price_prediction import PricePredictionModel
+from api.server import app, setup_api_events
 from strategies.router import StrategyRouter
-from trade_engine.trade_manager import AITradeManager
-from monitoring.dashboard import TradingDashboard
+from trade_engine.portfolio import VirtualPortfolio
+import uvicorn
 
-def main():
-    """
-    Initializes and starts the AI Crypto Trading System.
-    """
-    # Initialize data pipeline
-    data_pipeline = DataPipeline()
+# Setup logging
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-    # Initialize AI models
-    sentiment_model = SentimentModel()
-    price_model = PricePredictionModel()
+# Globals for easy access in handlers
+event_bus = EventBus()
+router = StrategyRouter()
+portfolio = VirtualPortfolio(initial_balance=10000.0, event_bus=event_bus)
 
-    # Initialize strategy router
-    strategy_router = StrategyRouter()
+async def market_data_handler(event: Event):
+    """Handles incoming market data."""
+    symbol = event.payload.get("symbol")
+    ticker = event.payload.get("ticker", {})
+    last_price = ticker.get('last')
+    logger.info(f"Received Market Data for {symbol}: Last Price = {last_price}")
+    
+    if last_price is not None:
+        market_data = {"symbol": symbol, "last": last_price}
+        signals = router.route_trades(market_data)
+        for signal in signals:
+            logger.info(f"Generated Signal: {signal}")
+            event_bus.publish(Event(EventType.SIGNAL_GENERATED, signal))
 
-    # Initialize trade manager
-    trade_manager = AITradeManager()
-
-    # Initialize dashboard
-    dashboard = TradingDashboard()
-
-    # TODO: Implement system startup, scheduling, and main trading loop
-
-    print("🚀 AI Crypto Trading System initialized. Ready to trade!")
+async def main():
+    logger.info("🚀 AI Crypto Trading System starting...")
+    
+    # Initialize Core Components
+    data_pipeline = DataPipeline(event_bus)
+    
+    # Register handlers
+    event_bus.subscribe(EventType.MARKET_DATA_EVENT, market_data_handler)
+    
+    # Start background tasks
+    event_bus_task = asyncio.create_task(event_bus.start())
+    symbols_to_trade = ["BTC/USDT", "ETH/USDT"]
+    market_data_task = asyncio.create_task(data_pipeline.start(symbols_to_trade))
+    
+    # Set up API events
+    setup_api_events(event_bus)
+    
+    # Start UI / API server
+    config = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="info")
+    server = uvicorn.Server(config)
+    server_task = asyncio.create_task(server.serve())
+    
+    try:
+        # Keep the main loop running
+        await asyncio.gather(event_bus_task, market_data_task, server_task)
+    except asyncio.CancelledError:
+        logger.info("Shutting down...")
+    finally:
+        await data_pipeline.stop()
+        event_bus.stop()
 
 if __name__ == "__main__":
-    main()
-
-
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nBot stopped by user.")

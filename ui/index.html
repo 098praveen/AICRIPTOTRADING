@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Crypto Trading Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1>AI Crypto Engine</h1>
+            <div class="status">
+                <span class="dot"></span> <span id="connection-status">Connecting...</span>
+            </div>
+        </header>
+
+        <section class="portfolio glass-panel">
+            <h2>Portfolio Overview</h2>
+            <div class="portfolio-stats">
+                <div class="stat-card">
+                    <div class="stat-label">Total Value</div>
+                    <div class="stat-value" id="port-total">$10,000.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Available Cash</div>
+                    <div class="stat-value" id="port-cash">$10,000.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Unrealized PnL</div>
+                    <div class="stat-value" id="port-pnl">$0.00</div>
+                </div>
+            </div>
+            <div class="positions-container">
+                <table id="positions-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Qty</th>
+                            <th>Avg Price</th>
+                            <th>Current Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positions-body">
+                        <!-- Positions injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <main>
+            <section class="market-data glass-panel">
+                <h2>Live Market Analysis</h2>
+                <div class="ticker-grid" id="ticker-container">
+                    <!-- Tickers will be dynamically injected here -->
+                </div>
+            </section>
+
+            <section class="trades glass-panel">
+                <h2>Recent Trades & Signals</h2>
+                <div class="table-container">
+                    <table id="trades-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Event Type</th>
+                                <th>Symbol</th>
+                                <th>Action</th>
+                                <th>Price</th>
+                                <th>Qty</th>
+                                <th>PnL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trades-body">
+                            <!-- Trades injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

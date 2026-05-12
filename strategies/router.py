@@ -16,9 +16,15 @@ class StrategyRouter:
             'arbitrage': ArbitrageStrategy()
         }
 
-    def route_trades(self, market_data, ai_signals):
+    def route_trades(self, market_data, ai_signals=None):
         """
         Decide which strategies to activate based on AI signals and market data.
         Returns: list of trade decisions.
         """
-        pass
+        signals = []
+        scalp_signal = self.strategies['scalping'].generate_signal(market_data)
+        if scalp_signal:
+            scalp_signal['symbol'] = market_data.get('symbol')
+            scalp_signal['strategy'] = 'scalping'
+            signals.append(scalp_signal)
+        return signals
